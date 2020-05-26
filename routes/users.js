@@ -2,7 +2,7 @@
  * @Author: 471826078@qq.com
  * @Date: 2020-05-21 09:48:04
  * @LastEditors: 471826078@qq.com
- * @LastEditTime: 2020-05-25 18:21:40
+ * @LastEditTime: 2020-05-26 15:29:02
  */
 var express = require('express');
 var router = express.Router();
@@ -49,7 +49,7 @@ const tokenConfig = require('./../utils/tokens')
 router.post('/register', function (req, res, next) {
   let message = ''
   console.log(req.body);
-  
+
   const { name, phone, email, password } = req.body
   if (!name) {
     message = '用户名不能为空'
@@ -68,7 +68,7 @@ router.post('/register', function (req, res, next) {
       res.send({ isSuccess: false, message: '此用户已注册,请登录' });
     } else {
       const newUser = new Users({
-        name, email, password, createDate:new Date().getTime(), phone: phone ? phone : '', types: phone === '18727994493' ? 1 : 0
+        name, email, password, createDate: new Date().getTime(), phone: phone ? phone : '', types: phone === '18727994495' ? 1 : 0
       })
       newUser.save(err => {
         const datas = err ? { isSuccess: false, message: '添加失败' } : { isSuccess: true, message: password ? '添加成功' : '添加成功,初始密码888888' }
@@ -133,14 +133,21 @@ router.post('/cancelUser', (req, res, next) => {
  */
 router.post('/adminLogin', (req, res, next) => {
   const { phone, password } = req.body
+  console.log(req.body);
+
   Users.find({ phone }, (err, users) => {
+    console.log(users);
+
     if (err) {
       res.send({ isSuccess: false, message: '登录失败' });
     } else {
       if (users.length == 0) {
         res.send({ isSuccess: false, message: '该用户不存在' });
       } else if (users[0].password == password && users[0].types === 1) {
+        console.log(222);
+
         let token = tokenConfig.createToken(phone + password, '1', 'hours')
+        console.log(token);
         users[0].token = token;
         Users(users[0]).save(function (err) {
           if (err) {
@@ -241,11 +248,40 @@ router.post('/login', (req, res, next) => {
  * 
  */
 router.post('/modifyPassword', (req, res, next) => {
-  Users.findByIdAndUpdate({ _id: req.body.id }, { password:  req.body.newpassword,token: '' }, (err, docs) => {
+  Users.findByIdAndUpdate({ _id: req.body.id }, { password: req.body.newpassword, token: '' }, (err, docs) => {
     if (err) {
       res.send({ isSuccess: false, message: '账户注销失败' });
     } else {
       res.send({ isSuccess: true, message: '账户注销成功' });
+    }
+  })
+})
+/**
+   * @name: 
+   * @param {type} 
+   * @Author: 471826078@qq.com
+   */
+router.post('/deleteUser',(req,res,next)=>{
+  const { id } = req.body
+  Users.findOneAndRemove ({_id:id}, (err, doc) => {
+    if (err) {
+      res.send({ isSuccess: false, message: '删除失败' });
+    } else {
+      res.send({ isSuccess: true, message: '删除成功' });
+    }
+  })
+})
+router.post('/query', (req, res, next) => {
+  const { email } = req.body
+  const whereStr = {};
+  if (email) {
+    whereStr.email = email
+  }
+  Users.find(whereStr, (err, doc) => {
+    if (err) {
+      res.send({ isSuccess: false, message: '查询失败' });
+    } else {
+      res.send({ isSuccess: true, data: doc });
     }
   })
 })
