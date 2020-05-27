@@ -2,7 +2,7 @@
  * @Author: 471826078@qq.com
  * @Date: 2020-05-21 09:48:04
  * @LastEditors: 471826078@qq.com
- * @LastEditTime: 2020-05-26 15:29:02
+ * @LastEditTime: 2020-05-27 17:39:22
  */
 var express = require('express');
 var router = express.Router();
@@ -133,29 +133,27 @@ router.post('/cancelUser', (req, res, next) => {
  */
 router.post('/adminLogin', (req, res, next) => {
   const { phone, password } = req.body
-  console.log(req.body);
-
   Users.find({ phone }, (err, users) => {
-    console.log(users);
-
     if (err) {
       res.send({ isSuccess: false, message: '登录失败' });
     } else {
       if (users.length == 0) {
         res.send({ isSuccess: false, message: '该用户不存在' });
-      } else if (users[0].password == password && users[0].types === 1) {
-        console.log(222);
+      } else if (users[0].password == password) {
+        if (users[0].types === 1) {
+          let token = tokenConfig.createToken(users[0]._id, '1', 'hours')
+          users[0].token = token;
+          Users(users[0]).save(function (err) {
+            if (err) {
+              res.status(500).send()
+              return
+            }
+            res.send({ isSuccess: true, message: '登陆成功', 'token': token, 'user_name': req.body.phone })     //反给前台
+          })
+        } else {
+          res.send({ isSuccess: false, message: '账户类型错误' });
+        }
 
-        let token = tokenConfig.createToken(phone + password, '1', 'hours')
-        console.log(token);
-        users[0].token = token;
-        Users(users[0]).save(function (err) {
-          if (err) {
-            res.status(500).send()
-            return
-          }
-          res.send({ isSuccess: true, message: '登陆成功', 'token': token, 'user_name': req.body.phone })     //反给前台
-        })
       } else if (users[0].password !== password) {
         res.send({ isSuccess: false, message: '密码不正确，请重新输入' });
       }
@@ -196,7 +194,7 @@ router.post('/login', (req, res, next) => {
         res.send({ isSuccess: false, message: '该用户不存在' });
       } else if (users[0].password == password) {
         if (users[0].types === 0) {
-          let token = tokenConfig.createToken(email + password, '1', 'hours')
+          let token = tokenConfig.createToken(users[0]._id, '1', 'hours')
           users[0].token = token;
           Users(users[0]).save(function (err) {
             if (err) {
@@ -207,7 +205,7 @@ router.post('/login', (req, res, next) => {
           })
         } else if (users[0].types === 1) {
           if (users[0].phone === '18727994495') {
-            let token = tokenConfig.createToken(email + password, '1', 'hours')
+            let token = tokenConfig.createToken(users[0]._id, '1', 'hours')
             users[0].token = token;
             Users(users[0]).save(function (err) {
               if (err) {
@@ -248,30 +246,60 @@ router.post('/login', (req, res, next) => {
  * 
  */
 router.post('/modifyPassword', (req, res, next) => {
-  Users.findByIdAndUpdate({ _id: req.body.id }, { password: req.body.newpassword, token: '' }, (err, docs) => {
-    if (err) {
-      res.send({ isSuccess: false, message: '账户注销失败' });
+  var token = req.headers['authorization'];
+  if (token) {
+    const { exp } = tokenConfig.verifyToken(token)
+    const dates = new Date()
+    const noDate = parseInt(dates.getTime() / 1000);
+    if (exp > noDate) {
+      Users.findByIdAndUpdate({ _id: req.body.id }, { password: req.body.newpassword, token: '' }, (err, docs) => {
+        if (err) {
+          res.send({ isSuccess: false, message: '账户注销失败' });
+        } else {
+          res.send({ isSuccess: true, message: '账户注销成功' });
+        }
+      })
     } else {
-      res.send({ isSuccess: true, message: '账户注销成功' });
+      return res.status(403).send('token失效');
     }
-  })
+  } else {
+    return res.status(401).send('未登录');
+  }
+
 })
 /**
-   * @name: 
-   * @param {type} 
+   * @name: 删除用户
+   * @param {string} id 
    * @Author: 471826078@qq.com
    */
-router.post('/deleteUser',(req,res,next)=>{
-  const { id } = req.body
-  Users.findOneAndRemove ({_id:id}, (err, doc) => {
-    if (err) {
-      res.send({ isSuccess: false, message: '删除失败' });
+router.post('/deleteUser', (req, res, next) => {
+  var token = req.headers['authorization'];
+  if (token) {
+    const { exp } = tokenConfig.verifyToken(token)
+    const dates = new Date()
+    const noDate = parseInt(dates.getTime() / 1000);
+    if (exp > noDate) {
+      const { id } = req.body
+      Users.findOneAndRemove({ _id: id }, (err, doc) => {
+        if (err) {
+          res.send({ isSuccess: false, message: '删除失败' });
+        } else {
+          res.send({ isSuccess: true, message: '删除成功' });
+        }
+      })
     } else {
-      res.send({ isSuccess: true, message: '删除成功' });
+      return res.status(403).send('token失效');
     }
-  })
+  } else {
+    return res.status(401).send('未登录');
+  }
+
+
+
 })
 router.post('/query', (req, res, next) => {
+
+
   const { email } = req.body
   const whereStr = {};
   if (email) {
