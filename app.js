@@ -45,7 +45,7 @@ var options = {
   },apis: [path.join(__dirname,'/routes/*.js')]
 }
 var swaggerSpec = swaggerDoc(options);
-app.use('/api-docs',swaggerUI.serve,swaggerUI.setup(swaggerSpec))
+app.use('/api',swaggerUI.serve,swaggerUI.setup(swaggerSpec))
 
 
 // view engine setup

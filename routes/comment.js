@@ -1,0 +1,5 @@
+const express = require('express')
+const router = express.Router()
+const Comments = require('./../model/comment')
+const Users = require('./../model/user')
+const tokenConfig = require('./../utils/tokens')
